@@ -1,0 +1,13 @@
+[Unit]
+Description=Overseer service
+Documentation=https://github.com/casimir/overseer
+After=network.target
+
+[Service]
+Environment="OVERSEER_INFLUX_USR=user"
+Environment="OVERSEER_INFLUX_PWD=password"
+ExecStart=/usr/bin/overseer
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
