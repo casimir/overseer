@@ -43,7 +43,7 @@ type (
 		Bikes    int
 		Attachs  int
 		Paiement string
-		Lastupd  string
+		Lastupd  string `json:"-"`
 	}
 )
 
