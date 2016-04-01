@@ -21,6 +21,8 @@ var (
 	influxClient client.Client
 )
 
+var dataCache *overseer.StationList
+
 func scrapData() {
 	start := time.Now()
 	data := overseer.NewWithCache(path.Join(cachePath, "stations.json"))
@@ -33,6 +35,7 @@ func scrapData() {
 		}
 	}
 	data.UpdateAll()
+	dataCache = data
 	log.Printf("Scrapped data in %s", time.Since(start))
 
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
@@ -83,17 +86,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	data := overseer.NewWithCache(path.Join(cachePath, "stations.json"))
-	if err := data.Update(); err != nil {
-		log.Fatal(err)
-	}
-	data.UpdateAll()
-
 	go startScrapper(time.Minute)
 
 	router := gin.Default()
 	router.GET("/stations", func(c *gin.Context) {
-		c.JSON(http.StatusOK, data.List())
+		c.JSON(http.StatusOK, dataCache.List())
+	})
+	router.GET("/station/:id", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+		}
+		c.JSON(http.StatusOK, dataCache.Get(id))
 	})
 	if err := router.Run(); err != nil {
 		log.Fatal(err)

@@ -32,18 +32,20 @@ func fetchURL(url string) ([]byte, error) {
 	return raw, err
 }
 
-type Station struct {
-	ID       int
-	Name     string
-	Lat      float64
-	Lng      float64
-	Adress   string
-	Status   int
-	Bikes    int `json:"-"`
-	Attachs  int `json:"-"`
-	Paiement string
-	Lastupd  string `json:"-"`
-}
+type (
+	Station struct {
+		ID       int
+		Name     string
+		Lat      float64
+		Lng      float64
+		Adress   string
+		Status   int
+		Bikes    int
+		Attachs  int
+		Paiement string
+		Lastupd  string
+	}
+)
 
 func (s Station) String() string {
 	return fmt.Sprintf("%s (%d/%d)", s.Name, s.Bikes, s.Bikes+s.Attachs)
