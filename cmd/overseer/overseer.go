@@ -99,7 +99,20 @@ func main() {
 		}
 		c.JSON(http.StatusOK, dataCache.Get(id))
 	})
-	if err := router.Run(); err != nil {
+	router.GET("/near/:lat/:lng", func(c *gin.Context) {
+		lat, latErr := strconv.ParseFloat(c.Param("lat"), 64)
+		lng, lngErr := strconv.ParseFloat(c.Param("lng"), 64)
+		if latErr != nil || lngErr != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+		}
+		stations := overseer.NewGeolist(dataCache, lat, lng)
+		n := len(stations)
+		if num, err := strconv.Atoi(c.Query("n")); err == nil {
+			n = num
+		}
+		c.JSON(http.StatusOK, stations[:n])
+	})
+	if err := router.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
 }
