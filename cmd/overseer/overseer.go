@@ -50,9 +50,9 @@ func scrapData() {
 			"id": strconv.Itoa(it.ID),
 		}
 		fields := map[string]interface{}{
-			"availability": float32(it.Bikes) / float32(it.Bikes+it.Attachs),
+			"availability": float32(it.Bikes) / float32(it.Bikes+it.Slots),
 			"bikes":        it.Bikes,
-			"free":         it.Attachs,
+			"free":         it.Slots,
 			"status":       strconv.Itoa(it.Status),
 		}
 		pt, err := client.NewPoint("station", tags, fields, start)

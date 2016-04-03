@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 )
 
 const (
@@ -34,21 +35,20 @@ func fetchURL(url string) ([]byte, error) {
 
 type (
 	Station struct {
-		ID       int
-		Name     string
-		Lat      float64
-		Lng      float64
-		Adress   string
-		Status   int
-		Bikes    int
-		Attachs  int
-		Paiement string
-		Lastupd  string `json:"-"`
+		ID          int
+		Name        string
+		Lat         float64
+		Lng         float64
+		Adress      string
+		Status      int
+		Bikes       int
+		Slots       int
+		SellTickets bool
 	}
 )
 
 func (s Station) String() string {
-	return fmt.Sprintf("%s (%d/%d)", s.Name, s.Bikes, s.Bikes+s.Attachs)
+	return fmt.Sprintf("%s (%d/%d)", s.Name, s.Bikes, s.Bikes+s.Slots)
 }
 
 type StationSlice []Station
@@ -137,7 +137,6 @@ func (sl *StationList) UpdateStation(id int) error {
 		Bikes    int      `xml:"bikes"`
 		Attachs  int      `xml:"attachs"`
 		Paiement string   `xml:"paiement"`
-		Lastupd  string   `xml:"lastupd"`
 	}
 	data, err := fetchURL(fmt.Sprintf(urlTplStation, id))
 	if err != nil {
@@ -147,12 +146,11 @@ func (sl *StationList) UpdateStation(id int) error {
 		return err
 	}
 	station := sl.list[id]
-	station.Adress = tmp.Adress
+	station.Adress = strings.TrimSpace(tmp.Adress)
 	station.Status = tmp.Status
 	station.Bikes = tmp.Bikes
-	station.Attachs = tmp.Attachs
-	station.Paiement = tmp.Paiement
-	station.Lastupd = tmp.Lastupd
+	station.Slots = tmp.Attachs
+	station.SellTickets = strings.HasPrefix(tmp.Paiement, "AVEC_")
 	sl.list[id] = station
 	return nil
 }
