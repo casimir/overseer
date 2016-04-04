@@ -211,8 +211,18 @@ type StationFilter func(Station) bool
 
 func (sl StationList) Filter(filters ...StationFilter) *StationList {
 	ret := NewWithCache(sl.cachePath)
+	if len(filters) == 0 {
+		ret.list = sl.list
+		return ret
+	}
 	for k, v := range sl.list {
-		ret.list[k] = v
+		add := true
+		for _, f := range filters {
+			add = add && f(v)
+		}
+		if add {
+			ret.list[k] = v
+		}
 	}
 	return ret
 }

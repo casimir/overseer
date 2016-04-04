@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/casimir/overseer"
@@ -76,14 +77,15 @@ func startScrapper(step time.Duration) {
 }
 
 func filters(c *gin.Context) (ret []overseer.StationFilter) {
-	if _, ok := c.GetQuery("hasBike"); ok {
-		ret = append(ret, overseer.HasBike)
-	}
-	if _, ok := c.GetQuery("hasSlot"); ok {
-		ret = append(ret, overseer.HasSlot)
-	}
-	if _, ok := c.GetQuery("sellsTickets"); ok {
-		ret = append(ret, overseer.SellsTickets)
+	for _, it := range strings.Split(c.Query("filters"), ",") {
+		switch it {
+		case "bike":
+			ret = append(ret, overseer.HasBike)
+		case "slot":
+			ret = append(ret, overseer.HasSlot)
+		case "tickets":
+			ret = append(ret, overseer.SellsTickets)
+		}
 	}
 	return
 }
