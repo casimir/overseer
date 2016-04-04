@@ -183,10 +183,8 @@ func (sl StationList) SaveCache() error {
 		return &CacheError{internalErr: err}
 	}
 	var list StationSlice
-	if err == nil {
-		if err := json.Unmarshal(raw, &list); err != nil {
-			return &CacheError{internalErr: err}
-		}
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return &CacheError{internalErr: err}
 	}
 
 	tmp, _ := New(false)
@@ -207,4 +205,14 @@ func (sl StationList) SaveCache() error {
 		return &CacheError{internalErr: err}
 	}
 	return nil
+}
+
+type StationFilter func(Station) bool
+
+func (sl StationList) Filter(filters ...StationFilter) *StationList {
+	ret := NewWithCache(sl.cachePath)
+	for k, v := range sl.list {
+		ret.list[k] = v
+	}
+	return ret
 }

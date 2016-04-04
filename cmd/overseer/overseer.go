@@ -75,6 +75,19 @@ func startScrapper(step time.Duration) {
 	}
 }
 
+func filters(c *gin.Context) (ret []overseer.StationFilter) {
+	if _, ok := c.GetQuery("hasBike"); ok {
+		ret = append(ret, overseer.HasBike)
+	}
+	if _, ok := c.GetQuery("hasSlot"); ok {
+		ret = append(ret, overseer.HasSlot)
+	}
+	if _, ok := c.GetQuery("sellsTickets"); ok {
+		ret = append(ret, overseer.SellsTickets)
+	}
+	return
+}
+
 func main() {
 	var err error
 	influxClient, err = client.NewHTTPClient(client.HTTPConfig{
@@ -90,7 +103,7 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/stations", func(c *gin.Context) {
-		c.JSON(http.StatusOK, dataCache.List())
+		c.JSON(http.StatusOK, dataCache.Filter(filters(c)...).List())
 	})
 	router.GET("/station/:id", func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
@@ -105,7 +118,7 @@ func main() {
 		if latErr != nil || lngErr != nil {
 			c.AbortWithStatus(http.StatusBadRequest)
 		}
-		stations := overseer.NewGeolist(dataCache, lat, lng)
+		stations := overseer.NewGeolist(dataCache.Filter(filters(c)...), lat, lng)
 		n := len(stations)
 		if num, err := strconv.Atoi(c.Query("n")); err == nil {
 			n = num
