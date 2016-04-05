@@ -46,9 +46,14 @@ func scrapData() {
 		log.Printf("Failed to save data: %s", err)
 		return
 	}
+	now := time.Now()
+	_, week := now.ISOWeek()
+	dow := int(now.Weekday())
 	for _, it := range data.List() {
 		tags := map[string]string{
-			"id": strconv.Itoa(it.ID),
+			"id":      strconv.Itoa(it.ID),
+			"week":    strconv.Itoa(week),
+			"weekday": strconv.Itoa(dow),
 		}
 		fields := map[string]interface{}{
 			"availability": float32(it.Bikes) / float32(it.Bikes+it.Slots),
