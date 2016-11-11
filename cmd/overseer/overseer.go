@@ -95,6 +95,21 @@ func filters(c *gin.Context) (ret []overseer.StationFilter) {
 	return
 }
 
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		if c.Request.Method == "OPTIONS" {
+			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type,Content-Length,Accept-Encoding,X-CSRF-Token,Authorization,accept,origin,Cache-Control,X-Requested-With")
+			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT")
+			c.AbortWithStatus(http.StatusNoContent)
+		} else {
+			c.Next()
+		}
+	}
+}
+
 func main() {
 	var err error
 	influxClient, err = client.NewHTTPClient(client.HTTPConfig{
@@ -109,6 +124,7 @@ func main() {
 	go startScrapper(time.Minute)
 
 	router := gin.Default()
+	router.Use(CORSMiddleware())
 	router.GET("/stations", func(c *gin.Context) {
 		c.JSON(http.StatusOK, dataCache.Filter(filters(c)...).List())
 	})
