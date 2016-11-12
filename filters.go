@@ -9,5 +9,5 @@ func HasSlot(st Station) bool {
 }
 
 func SellsTickets(st Station) bool {
-	return st.SellTickets
+	return st.SellsTickets
 }

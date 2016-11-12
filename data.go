@@ -33,19 +33,17 @@ func fetchURL(url string) ([]byte, error) {
 	return raw, err
 }
 
-type (
-	Station struct {
-		ID          int
-		Name        string
-		Lat         float64
-		Lng         float64
-		Adress      string
-		Status      int
-		Bikes       int
-		Slots       int
-		SellTickets bool
-	}
-)
+type Station struct {
+	ID           int     `json:"id"`
+	Name         string  `json:"name"`
+	Lat          float64 `json:"latitude"`
+	Lng          float64 `json:"longitude"`
+	Adress       string  `json:"adress"`
+	Status       int     `json:"status"`
+	Bikes        int     `json:"bikes"`
+	Slots        int     `json:"slots"`
+	SellsTickets bool    `json:"sells_tickets"`
+}
 
 func (s Station) String() string {
 	return fmt.Sprintf("%s (%d/%d)", s.Name, s.Bikes, s.Bikes+s.Slots)
@@ -150,7 +148,7 @@ func (sl *StationList) UpdateStation(id int) error {
 	station.Status = tmp.Status
 	station.Bikes = tmp.Bikes
 	station.Slots = tmp.Attachs
-	station.SellTickets = strings.HasPrefix(tmp.Paiement, "AVEC_")
+	station.SellsTickets = strings.HasPrefix(tmp.Paiement, "AVEC_")
 	sl.list[id] = station
 	return nil
 }

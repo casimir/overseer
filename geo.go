@@ -21,8 +21,8 @@ func distanceBetween(lat1, lng1, lat2, lng2 float64) float64 {
 }
 
 type GeoStation struct {
-	Station  Station
-	Distance float64
+	Station  `json:"station"`
+	Distance float64 `json:"distance"`
 }
 
 type GeoStationList []GeoStation

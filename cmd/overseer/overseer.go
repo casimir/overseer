@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -110,6 +112,26 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
+func parseLocation(location string) (float64, float64, error) {
+	errMsg := fmt.Sprintf("Invalid location: %q", location)
+	if location == "" || location[0] != '@' {
+		return 0, 0, errors.New(errMsg)
+	}
+	parts := strings.Split(location[1:], ",")
+	if len(parts) != 2 {
+		return 0, 0, errors.New(errMsg)
+	}
+	lat, latErr := strconv.ParseFloat(parts[0], 64)
+	if latErr != nil {
+		return 0, 0, latErr
+	}
+	lng, lngErr := strconv.ParseFloat(parts[1], 64)
+	if lngErr != nil {
+		return 0, 0, lngErr
+	}
+	return lat, lng, nil
+}
+
 func main() {
 	var err error
 	influxClient, err = client.NewHTTPClient(client.HTTPConfig{
@@ -128,10 +150,11 @@ func main() {
 	router.GET("/stations", func(c *gin.Context) {
 		c.JSON(http.StatusOK, dataCache.Filter(filters(c)...).List())
 	})
-	router.GET("/station/:id", func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
+	router.GET("/station/:path", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("path"))
 		if err != nil {
 			c.AbortWithStatus(http.StatusBadRequest)
+			return
 		}
 		c.JSON(http.StatusOK, dataCache.Get(id))
 	})
@@ -147,6 +170,17 @@ func main() {
 			n = num
 		}
 		c.JSON(http.StatusOK, stations[:n])
+	})
+	router.GET("/now/:location", func(c *gin.Context) {
+		location := c.Param("location")
+		lat, lng, err := parseLocation(location)
+		if err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		log.Print(lat, lng)
+		stations := overseer.NewGeolist(dataCache, lat, lng)
+		c.JSON(http.StatusOK, overseer.NewNow(stations))
 	})
 	if err := router.Run(":8080"); err != nil {
 		log.Fatal(err)
