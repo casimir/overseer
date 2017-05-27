@@ -77,11 +77,12 @@ func New(init bool) (*StationList, error) {
 	return initStations()
 }
 
-func NewWithCache(cachePath string) *StationList {
-	return &StationList{
+func NewWithCache(cachePath string) (*StationList, error) {
+	sl := &StationList{
 		cachePath: cachePath,
 		list:      make(map[int]Station),
 	}
+	return sl, sl.LoadCache()
 }
 
 func (sl StationList) Get(id int) Station {
@@ -160,6 +161,9 @@ func (sl StationList) UpdateAll() []error {
 			errs = append(errs, err)
 		}
 	}
+	if err := sl.SaveCache(); err != nil {
+		errs = append(errs, err)
+	}
 	return errs
 }
 
@@ -169,6 +173,25 @@ type CacheError struct {
 
 func (ce *CacheError) Error() string {
 	return fmt.Sprintf("Cache operation failed: %s", ce.internalErr)
+}
+
+func (sl *StationList) LoadCache() error {
+	if sl.cachePath == "" {
+		return nil
+	}
+
+	raw, err := ioutil.ReadFile(sl.cachePath)
+	if err != nil && !os.IsNotExist(err) {
+		return &CacheError{internalErr: err}
+	}
+	var list StationSlice
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return &CacheError{internalErr: err}
+	}
+	for _, it := range list {
+		sl.list[it.ID] = it
+	}
+	return nil
 }
 
 func (sl StationList) SaveCache() error {
@@ -208,7 +231,7 @@ func (sl StationList) SaveCache() error {
 type StationFilter func(Station) bool
 
 func (sl StationList) Filter(filters ...StationFilter) *StationList {
-	ret := NewWithCache(sl.cachePath)
+	ret, _ := NewWithCache(sl.cachePath)
 	if len(filters) == 0 {
 		ret.list = sl.list
 		return ret

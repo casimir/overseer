@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,14 +14,13 @@ import (
 
 	"github.com/casimir/overseer"
 	"github.com/gin-gonic/gin"
-	"github.com/influxdata/influxdb/client/v2"
+	client "github.com/influxdata/influxdb/client/v2"
 )
 
 const appName = "overseer"
 
 var (
 	cachePath    = "/var/lib/" + appName
-	configPath   = "/etc/" + appName
 	influxClient client.Client
 )
 
@@ -28,24 +28,27 @@ var dataCache *overseer.StationList
 
 func scrapData() {
 	start := time.Now()
-	data := overseer.NewWithCache(path.Join(cachePath, "stations.json"))
+	data, cacheErr := overseer.NewWithCache(path.Join(cachePath, "stations.json"))
+	if cacheErr != nil {
+		log.Println("could not load cache file, it will be initiated on first fetching")
+	}
 	if err := data.Update(); err != nil {
 		if cerr, ok := err.(*overseer.CacheError); ok {
 			log.Print(cerr)
 		} else {
-			log.Printf("Failed to update data: %s", err)
+			log.Printf("failed to update data: %s", err)
 			return
 		}
 	}
 	data.UpdateAll()
 	dataCache = data
-	log.Printf("Scrapped data in %s", time.Since(start))
+	log.Printf("scrapped data in %s", time.Since(start))
 
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
 		Database: "overseer",
 	})
 	if err != nil {
-		log.Printf("Failed to save data: %s", err)
+		log.Printf("failed to save data: %s", err)
 		return
 	}
 	now := time.Now()
@@ -65,13 +68,13 @@ func scrapData() {
 		}
 		pt, err := client.NewPoint("station", tags, fields, start)
 		if err != nil {
-			log.Printf("Failed to save data: %s", err)
+			log.Printf("failed to save data: %s", err)
 			continue
 		}
 		bp.AddPoint(pt)
 	}
 	if err := influxClient.Write(bp); err != nil {
-		log.Printf("Failed to save data: %s", err)
+		log.Printf("failed to save data: %s", err)
 	}
 }
 
@@ -113,7 +116,7 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 func parseLocation(location string) (float64, float64, error) {
-	errMsg := fmt.Sprintf("Invalid location: %q", location)
+	errMsg := fmt.Sprintf("invalid location: %q", location)
 	if location == "" || location[0] != '@' {
 		return 0, 0, errors.New(errMsg)
 	}
@@ -132,18 +135,40 @@ func parseLocation(location string) (float64, float64, error) {
 	return lat, lng, nil
 }
 
-func main() {
-	var err error
-	influxClient, err = client.NewHTTPClient(client.HTTPConfig{
-		Addr:     "http://localhost:8086",
-		Username: os.Getenv("OVERSEER_INFLUX_USR"),
-		Password: os.Getenv("OVERSEER_INFLUX_PWD"),
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+var (
+	fakeMode     = flag.Bool("fake", false, "don't scrap or connect to DB and serve fake data")
+	fakeModeFile = flag.String("fakefile", "", "data file to use in fake mode (implies -fake)")
+)
 
-	go startScrapper(time.Minute)
+func main() {
+	flag.Parse()
+
+	if *fakeMode || *fakeModeFile != "" {
+		fakeCachePath := *fakeModeFile
+		if fakeCachePath == "" {
+			gopath := os.Getenv("GOPATH")
+			pkg := "github.com/casimir/overseer"
+			fakeCachePath = path.Join(gopath, "src", pkg, "_testdata/stations.json")
+		}
+		log.Printf("using fake data from %s\n", fakeCachePath)
+		cache, err := overseer.NewWithCache(fakeCachePath)
+		if err != nil {
+			log.Fatalf("could not load data: %s\n", err)
+		}
+		dataCache = cache
+	} else {
+		var err error
+		influxClient, err = client.NewHTTPClient(client.HTTPConfig{
+			Addr:     "http://localhost:8086",
+			Username: os.Getenv("OVERSEER_INFLUX_USR"),
+			Password: os.Getenv("OVERSEER_INFLUX_PWD"),
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		go startScrapper(time.Minute)
+	}
 
 	router := gin.Default()
 	router.Use(CORSMiddleware())
