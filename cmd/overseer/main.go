@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -116,13 +115,15 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 func parseLocation(location string) (float64, float64, error) {
-	errMsg := fmt.Sprintf("invalid location: %q", location)
+	// for now handle @lat,lng
+	// later handle indexed string
+	invalidLocErr := fmt.Errorf("invalid location: %q", location)
 	if location == "" || location[0] != '@' {
-		return 0, 0, errors.New(errMsg)
+		return 0, 0, invalidLocErr
 	}
 	parts := strings.Split(location[1:], ",")
 	if len(parts) != 2 {
-		return 0, 0, errors.New(errMsg)
+		return 0, 0, invalidLocErr
 	}
 	lat, latErr := strconv.ParseFloat(parts[0], 64)
 	if latErr != nil {
@@ -175,19 +176,20 @@ func main() {
 	router.GET("/stations", func(c *gin.Context) {
 		c.JSON(http.StatusOK, dataCache.Filter(filters(c)...).List())
 	})
-	router.GET("/station/:path", func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("path"))
+	router.GET("/station/:id", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
 		c.JSON(http.StatusOK, dataCache.Get(id))
 	})
-	router.GET("/near/:lat/:lng", func(c *gin.Context) {
-		lat, latErr := strconv.ParseFloat(c.Param("lat"), 64)
-		lng, lngErr := strconv.ParseFloat(c.Param("lng"), 64)
-		if latErr != nil || lngErr != nil {
-			c.AbortWithStatus(http.StatusBadRequest)
+	router.GET("/near/:location", func(c *gin.Context) {
+		location := c.Param("location")
+		lat, lng, err := parseLocation(location)
+		if err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
 		}
 		stations := overseer.NewGeolist(dataCache.Filter(filters(c)...), lat, lng)
 		n := len(stations)
@@ -203,7 +205,6 @@ func main() {
 			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
-		log.Print(lat, lng)
 		stations := overseer.NewGeolist(dataCache, lat, lng)
 		c.JSON(http.StatusOK, overseer.NewNow(stations))
 	})
