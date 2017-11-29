@@ -1,0 +1,6 @@
+This was an experiment about monitoring and playing with the data from the
+V'Lille service. 
+
+
+If you're really curious you can get an InfluxDB dump of 2 years worth of
+data https://www.dropbox.com/s/o5yogqzbzyplsfd/overseer.tar.bz2?dl=1[here].
